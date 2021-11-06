@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: ${COMPOSER_PROJECT_NAME}-mysql
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./db:/var/lib/mysql
+
+  php:
+    container_name: ${COMPOSER_PROJECT_NAME}-php
+    build:
+      context: ./php-fpm
+    ports:
+      - '9000:9000'
+    volumes:
+      - ./symfony:/var/www/symfony:cached
+    depends_on:
+      - db
+
+  nginx:
+    container_name: ${COMPOSER_PROJECT_NAME}-nginx
+    image: nginx:stable-alpine
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./logs/nginx:/var/log/nginx:cached
+      - ./symfony:/var/www/symfony:cached
+    depends_on:
+      - php
+      - db
+  
+  adminer:
+    image: adminer:latest
+    container_name: ${COMPOSER_PROJECT_NAME}-adminer
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_DB_DRIVER: mysql
+      ADMINER_DEFAULT_DB_HOST: mariadb
+      ADMINER_DEFAULT_DB_NAME: adminer
+      ADMINER_DESIGN: nette
+      ADMINER_PLUGINS: tables-filter tinymce
+    ports:
+      - "8090:8080"
